@@ -1,7 +1,9 @@
-import { Controller, Post, Request } from "@nestjs/common";
+import { Controller, Post, Request, UseGuards } from "@nestjs/common";
 import { MarcaService } from "./marca.service";
 import { CreateMarcaDTO } from "./dto/create-marca.dto";
+import { AuthGuard } from "src/guards/auth.guard";
 
+@UseGuards(AuthGuard)
 @Controller('marcas')
 export class MarcaController {
     constructor(
