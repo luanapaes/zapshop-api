@@ -1,9 +1,11 @@
-import { Body, Controller, Get, Param, Patch, Post, Put } from "@nestjs/common";
+import { Body, Controller, Get, Param, Patch, Post, Put, UseGuards } from "@nestjs/common";
 import { CreateUsuarioDTO } from "./dto/create-usuario.dto";
 import { UsuarioService } from "./usuario.service";
 import { UpdatePutUsuario } from "./dto/update-put-usuario.dto";
 import { UpdatePatchUsuario } from "./dto/update-patch-usuario.dto";
+import { AuthGuard } from "src/guards/auth.guard";
 
+@UseGuards(AuthGuard)
 @Controller('usuarios')
 export class UsuarioController {
 
