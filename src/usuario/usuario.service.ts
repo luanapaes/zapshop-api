@@ -49,6 +49,15 @@ export class UsuarioService {
         return this.usuariosRepository.find();
     }
 
+    async getUserByIdUsingRelations(userId: number): Promise<UsuarioEntity> {
+        return this.usuariosRepository.findOne({
+            where: {
+                id: userId
+            },
+            relations: ['marcas']
+        })
+    }
+
     async listOne(id: number) {
         await this.exists(id);
 
