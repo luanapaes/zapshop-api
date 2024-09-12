@@ -34,18 +34,25 @@ export class MarcaService {
     }
 
     async create(data: CreateMarcaDTO){
-        await this.existsByName(data.nome_marca);
+        console.log(data.usuarioId)
+        if (!(await this.marcasRepository.exists({
+            where: {
+                nome_marca: data.nome_marca
+            }
+        }))){
+            const newMarca: CreateMarcaDTO = {
+                usuarioId: data.usuarioId,
+                nome_marca: data.nome_marca,
+                categorias: data.categorias,
+                logomarca: data.logomarca
+            }
 
-        const newMarca: CreateMarcaDTO = {
-            nome_marca: data.nome_marca,
-            categorias: data.categorias,
-            logomarca: data.logomarca,
-            usuarioId: data.usuarioId
+            const marca = this.marcasRepository.create(newMarca);
+
+            return await this.marcasRepository.save(marca);
+        } else{
+            throw new NotFoundException(`A marca ${data.nome_marca} já está cadastrada.`)
         }
-
-        const marca = await this.marcasRepository.create(newMarca);
-        return this.marcasRepository.save(marca);
-
     }
 
     async findMarcaById(id: number) {
@@ -61,6 +68,21 @@ export class MarcaService {
         return this.marcasRepository.findOneBy({
             nome_marca: name
         })
+
+    }
+
+    async delete(id: number) {
+
+        await this.exists(id);
+
+        //verifica se o todo existe
+        const todo = await this.marcasRepository.findOne({
+            where: {
+                id
+            }
+        });
+
+        return await this.marcasRepository.remove(todo)
 
     }
 
