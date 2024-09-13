@@ -27,16 +27,6 @@ export class MarcaService {
         }
     }
 
-    async existsByName(marca_name: string) {
-
-        if (!(await this.marcasRepository.exists({
-            where: {
-                nome_marca: marca_name
-            }
-        }))) {
-            throw new NotFoundException(`Marca não encontrada.`)
-        }
-    }
 
     async create(data: CreateMarcaDTO, file: LogomarcaDTO) {
         if (!(await this.marcasRepository.exists({
@@ -88,6 +78,10 @@ export class MarcaService {
         } else {
             throw new NotFoundException(`A marca ${data.nome_marca} já está cadastrada.`)
         }
+    }
+
+    async read(){
+        return this.marcasRepository.find();
     }
 
     async findMarcaById(id: number) {
