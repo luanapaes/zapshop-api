@@ -1,7 +1,8 @@
-import { Body, Controller, Delete, Post, Request, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Post, Request, UploadedFile, UseGuards, UseInterceptors } from "@nestjs/common";
 import { MarcaService } from "./marca.service";
 import { CreateMarcaDTO } from "./dto/create-marca.dto";
 import { AuthGuard } from "src/guards/auth.guard";
+import { FileInterceptor } from "@nestjs/platform-express";
 
 @UseGuards(AuthGuard)
 @Controller('marcas')
@@ -11,10 +12,11 @@ export class MarcaController {
     ){}
 
     @Post()
-    async create(@Body() marca: CreateMarcaDTO, @Request() req){
+    @UseInterceptors(FileInterceptor('logomarca'))
+    async create(@Body() marca: CreateMarcaDTO, @UploadedFile() logomarca, @Request() req){
         
         marca.usuarioId = req.user.id;
-        return await this.marcasService.create(marca);
+        return await this.marcasService.create(marca, logomarca);
     }
 
     @Delete(':id')
