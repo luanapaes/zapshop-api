@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Post, Request, UploadedFile, UseGuards, UseInterceptors } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Post, Request, UploadedFile, UseGuards, UseInterceptors } from "@nestjs/common";
 import { MarcaService } from "./marca.service";
 import { CreateMarcaDTO } from "./dto/create-marca.dto";
 import { AuthGuard } from "src/guards/auth.guard";
@@ -10,6 +10,16 @@ export class MarcaController {
     constructor(
         private readonly marcasService: MarcaService
     ){}
+
+    @Get()
+    async read(){
+        return this.marcasService.read()
+    }
+
+    @Get(':id')
+    async listOne(@Param('id') id: number){
+        return this.marcasService.findMarcaById(id);
+    }
 
     @Post()
     @UseInterceptors(FileInterceptor('logomarca'))
