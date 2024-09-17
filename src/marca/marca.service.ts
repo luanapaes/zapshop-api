@@ -5,6 +5,8 @@ import { Repository } from "typeorm";
 import { CreateMarcaDTO } from "./dto/create-marca.dto";
 import { LogomarcaDTO } from "./dto/logomarca.dto";
 import { createClient } from "@supabase/supabase-js";
+import { UpdatePutMarcaDTO } from "./dto/update-put-marca.dto";
+import { UpdatePatchMarcaDTO } from "./dto/update-patch-marca.dto";
 
 Injectable()
 export class MarcaService {
@@ -98,6 +100,46 @@ export class MarcaService {
             nome_marca: name
         })
 
+    }
+
+    async update(id: number, { usuarioId, nome_marca, categorias, logomarca }: UpdatePutMarcaDTO) {
+        console.log("chegou aq: ",id)
+        await this.exists(id)
+
+        await this.marcasRepository.update(id, {
+            usuarioId: usuarioId,
+            nome_marca: nome_marca, 
+            categorias: categorias, 
+            logomarca: logomarca
+        });
+
+        return this.findMarcaById(id);
+    }
+
+    async updatePartial(id: number, { usuarioId, nome_marca, categorias, logomarca }: UpdatePatchMarcaDTO) {
+
+        await this.exists(id)
+
+        const data: any = {};
+
+        if(usuarioId){
+            data.usuarioId = usuarioId
+        }
+
+        if (nome_marca) {
+            data.name_marca = nome_marca
+        }
+
+        if (categorias) {
+            data.categorias = categorias;
+        }
+
+        if (logomarca) {
+            data.logomarca = logomarca; 
+        }
+
+        await this.marcasRepository.update(id, data);
+        return this.findMarcaById(id)
     }
 
     async delete(id: number) {
