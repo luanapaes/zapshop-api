@@ -11,7 +11,7 @@ export class ProdutoController {
     ){}
 
     @Post()
-    async cretae(@Body() data: CreateProdutoDTO){
+    async create(@Body() data: CreateProdutoDTO){
         return this.produtoService.create(data);
     }
 }
