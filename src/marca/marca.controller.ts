@@ -18,9 +18,14 @@ export class MarcaController {
         return this.marcasService.read()
     }
 
+    // @Get(':id')
+    // async listOne(@Param('id') id: number){
+    //     return this.marcasService.findMarcaById(id);
+    // }
+
     @Get(':id')
-    async listOne(@Param('id') id: number){
-        return this.marcasService.findMarcaById(id);
+    async listOne(@Param('id') id: number) {
+        return this.marcasService.getMarcaByIdUsingRelations(id);
     }
 
     @Post()
