@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { MarcaEntity } from "./entity/marca.entity";
 import { Repository } from "typeorm";
@@ -86,7 +86,7 @@ export class MarcaService {
         return this.marcasRepository.find();
     }
 
-    async findMarcaById(id: number) {
+    async findMarcaById(id: number): Promise<MarcaEntity> {
         await this.exists(id)
 
         return this.marcasRepository.findOneBy({
@@ -95,15 +95,20 @@ export class MarcaService {
 
     }
 
-    async findMarcaByName(name: string) {
-        return this.marcasRepository.findOneBy({
-            nome_marca: name
-        })
+    async findIdByNome(nome: string){
+
+        const marca = await this.marcasRepository.findOneBy({ nome_marca: nome });
+
+        if (marca) {
+            return marca;
+        } else {
+            throw new BadRequestException(`Marca com nome ${nome} não encontrada`);
+        }
 
     }
 
     async update(id: number, { usuarioId, nome_marca, categorias, logomarca }: UpdatePutMarcaDTO) {
-        console.log("chegou aq: ",id)
+
         await this.exists(id)
 
         await this.marcasRepository.update(id, {
@@ -155,6 +160,15 @@ export class MarcaService {
 
         return await this.marcasRepository.remove(todo)
 
+    }
+
+    async getMarcaByIdUsingRelations(marcaId: number): Promise<MarcaEntity> {
+        return this.marcasRepository.findOne({
+            where: {
+                id: marcaId
+            },
+            relations: ['produtos']
+        })
     }
 
 }
