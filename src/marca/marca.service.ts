@@ -1,10 +1,12 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { MarcaEntity } from "./entity/marca.entity";
 import { Repository } from "typeorm";
 import { CreateMarcaDTO } from "./dto/create-marca.dto";
 import { LogomarcaDTO } from "./dto/logomarca.dto";
 import { createClient } from "@supabase/supabase-js";
+import { UpdatePutMarcaDTO } from "./dto/update-put-marca.dto";
+import { UpdatePatchMarcaDTO } from "./dto/update-patch-marca.dto";
 
 Injectable()
 export class MarcaService {
@@ -27,16 +29,6 @@ export class MarcaService {
         }
     }
 
-    async existsByName(marca_name: string) {
-
-        if (!(await this.marcasRepository.exists({
-            where: {
-                nome_marca: marca_name
-            }
-        }))) {
-            throw new NotFoundException(`Marca não encontrada.`)
-        }
-    }
 
     async create(data: CreateMarcaDTO, file: LogomarcaDTO) {
         if (!(await this.marcasRepository.exists({
@@ -90,7 +82,11 @@ export class MarcaService {
         }
     }
 
-    async findMarcaById(id: number) {
+    async read(){
+        return this.marcasRepository.find();
+    }
+
+    async findMarcaById(id: number): Promise<MarcaEntity> {
         await this.exists(id)
 
         return this.marcasRepository.findOneBy({
@@ -99,11 +95,56 @@ export class MarcaService {
 
     }
 
-    async findMarcaByName(name: string) {
-        return this.marcasRepository.findOneBy({
-            nome_marca: name
-        })
+    async findIdByNome(nome: string){
 
+        const marca = await this.marcasRepository.findOneBy({ nome_marca: nome });
+
+        if (marca) {
+            return marca;
+        } else {
+            throw new BadRequestException(`Marca com nome ${nome} não encontrada`);
+        }
+
+    }
+
+    async update(id: number, { usuarioId, nome_marca, categorias, logomarca }: UpdatePutMarcaDTO) {
+
+        await this.exists(id)
+
+        await this.marcasRepository.update(id, {
+            usuarioId: usuarioId,
+            nome_marca: nome_marca, 
+            categorias: categorias, 
+            logomarca: logomarca
+        });
+
+        return this.findMarcaById(id);
+    }
+
+    async updatePartial(id: number, { usuarioId, nome_marca, categorias, logomarca }: UpdatePatchMarcaDTO) {
+
+        await this.exists(id)
+
+        const data: any = {};
+
+        if(usuarioId){
+            data.usuarioId = usuarioId
+        }
+
+        if (nome_marca) {
+            data.name_marca = nome_marca
+        }
+
+        if (categorias) {
+            data.categorias = categorias;
+        }
+
+        if (logomarca) {
+            data.logomarca = logomarca; 
+        }
+
+        await this.marcasRepository.update(id, data);
+        return this.findMarcaById(id)
     }
 
     async delete(id: number) {
@@ -119,6 +160,15 @@ export class MarcaService {
 
         return await this.marcasRepository.remove(todo)
 
+    }
+
+    async getMarcaByIdUsingRelations(marcaId: number): Promise<MarcaEntity> {
+        return this.marcasRepository.findOne({
+            where: {
+                id: marcaId
+            },
+            relations: ['produtos']
+        })
     }
 
 }

@@ -1,6 +1,5 @@
-import { CategoriaEntity } from 'src/categoria/entity/categoria.entity';
 import { MarcaEntity } from 'src/marca/entity/marca.entity';
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
 
 @Entity({
     name: 'produtos'
@@ -8,6 +7,12 @@ import { Entity, PrimaryGeneratedColumn, Column, ManyToOne } from 'typeorm';
 export class ProdutoEntity {
     @PrimaryGeneratedColumn()
     id: number;
+
+    @Column({
+        name: 'marca_id',
+        nullable: false
+    })
+    marcaId: number;
 
     @Column()
     nome_produto: string;
@@ -21,9 +26,13 @@ export class ProdutoEntity {
     @Column()
     produto_descricao: string;
 
-    @ManyToOne(() => MarcaEntity, (marca) => marca.produtos)
-    marca: MarcaEntity;
+    @Column()
+    categorias: string;
 
-    @ManyToOne(() => CategoriaEntity, (categoria) => categoria.produtos)
-    categoria: CategoriaEntity;
+    @ManyToOne(() => MarcaEntity, (marca) => marca.produtos)
+    @JoinColumn({
+        name: 'marca_id',
+        referencedColumnName: 'id'
+    })
+    marca: MarcaEntity;
 }
