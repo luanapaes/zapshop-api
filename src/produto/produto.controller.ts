@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Put, UploadedFile, UseGuards, UseInterceptors } from "@nestjs/common";
+import { Body, Controller, Get, Param, Patch, Post, Put, UploadedFile, UseGuards, UseInterceptors } from "@nestjs/common";
 import { ProdutoService } from "./produto.service";
 import { CreateProdutoDTO } from "./dto/create-produto.dto";
 import { AuthGuard } from "src/guards/auth.guard";
@@ -29,8 +29,18 @@ export class ProdutoController {
     }
 
     @Put(':id')
-    async update(@Body() produto: UpdatePutProdutoDTO, @Param("id") id: number) {
-        return this.produtoService.update(id, produto);
+    @UseInterceptors(FileInterceptor('produto_imagem'))
+    async update(@Body() produto: UpdatePutProdutoDTO, @Param("id") id: number, @UploadedFile() productImage) {
+
+        return this.produtoService.update(id, produto, productImage);
+
+    }
+
+    @Patch(':id')
+    @UseInterceptors(FileInterceptor('produto_imagem'))
+    async updatePartial(@Body() produto: UpdatePutProdutoDTO, @Param("id") id: number, @UploadedFile() productImage) {
+
+        return this.produtoService.updatePartial(id, produto, productImage);
 
     }
 }
