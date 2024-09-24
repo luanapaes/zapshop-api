@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Put, UploadedFile, UseGuards, UseInterceptors } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Patch, Post, Put, UploadedFile, UseGuards, UseInterceptors } from "@nestjs/common";
 import { ProdutoService } from "./produto.service";
 import { CreateProdutoDTO } from "./dto/create-produto.dto";
 import { AuthGuard } from "src/guards/auth.guard";
@@ -42,5 +42,10 @@ export class ProdutoController {
 
         return this.produtoService.updatePartial(id, produto, productImage);
 
+    }
+
+    @Delete(':id')
+    async delete(@Param('id') id: number) {
+        return this.produtoService.delete(id)
     }
 }
