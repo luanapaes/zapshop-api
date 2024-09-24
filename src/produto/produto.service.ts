@@ -24,6 +24,12 @@ export class ProdutoService {
     supabaseURL = process.env.SUPABASE_URL;
     supabaseKEY = process.env.SUPABASE_KEY;
 
+    supabase = createClient(this.supabaseURL, this.supabaseKEY, {
+        auth: {
+            persistSession: false
+        }
+    });
+
     async create(data: CreateProdutoDTO, file: ProductImage) {
 
         const fullMarca = await this.marcasService.findIdByNome(data.nome_marca)
@@ -33,13 +39,9 @@ export class ProdutoService {
                 nome_marca: data.nome_marca
             }
         })) {
-            const supabase = createClient(this.supabaseURL, this.supabaseKEY, {
-                auth: {
-                    persistSession: false
-                }
-            });
+    
 
-            const newLogomarca = await supabase.storage
+            const newLogomarca = await this.supabase.storage
                 .from('product_image')
                 .upload(file.originalname, file.buffer, {
                     upsert: true,
@@ -50,7 +52,7 @@ export class ProdutoService {
             }
 
             // faz uma url para a logomarca
-            const { data: publicData } = supabase.storage
+            const { data: publicData } = this.supabase.storage
                 .from('product_image')
                 .getPublicUrl(newLogomarca.data.path);
 
@@ -85,7 +87,7 @@ export class ProdutoService {
                 id
             }
         }))) {
-            throw new NotFoundException(`Marca não encontrada.`)
+            throw new NotFoundException(`Produto não encontrado.`)
         }
     }
 
@@ -101,46 +103,98 @@ export class ProdutoService {
         })
     }
 
-    async update(id: number, { nome_produto, produto_descricao, produto_preco, produto_image, nome_marca }: UpdatePutProdutoDTO) {
+    async update(id: number, { nome_produto, produto_descricao, produto_preco, produto_image, nome_marca }: UpdatePutProdutoDTO, productImage: ProductImage) {
 
-        await this.exists(id)
-        
-        const fullMarca = await this.marcasService.findIdByNome(nome_marca)
+        if (nome_produto != '' && produto_descricao != '' && produto_preco != '' && produto_image != '' && nome_marca != '' && productImage != null){
+            await this.exists(id)
+
+            const fullMarca = await this.marcasService.findIdByNome(nome_marca)
+
+            const newLogomarca = await this.supabase.storage
+                .from('product_image')
+                .upload(productImage.originalname, productImage.buffer, {
+                    upsert: true,
+                });
+
+            if (newLogomarca.error) {
+                console.error("Erro no upload da imagem:", newLogomarca.error);
+                throw new Error(newLogomarca.error.message);
+            }
+
+            // faz uma url para a logomarca
+            const { data: publicData } = this.supabase.storage
+                .from('product_image')
+                .getPublicUrl(newLogomarca.data.path);
+
+            if (!publicData || !publicData.publicUrl) {
+                throw new Error('Não foi possível gerar a URL pública.');
+            }
 
 
-        await this.produtosRepository.update(id, {
-            nome_produto: nome_produto,
-            produto_descricao: produto_descricao,
-            produto_preco: produto_preco,
-            produto_image: produto_image,
-            marcaId: fullMarca.id
-        });
+            await this.produtosRepository.update(id, {
+                nome_produto: nome_produto,
+                produto_descricao: produto_descricao,
+                produto_preco: produto_preco,
+                produto_image: publicData.publicUrl,
+                marcaId: fullMarca.id
+            });
 
-        return this.readOne(id);
+            return this.readOne(id);
+        }{
+            throw new NotFoundException("É necessário preencher todos os campos.");
+        }
     }
 
-    async updatePartial(id: number, { nome_produto, produto_descricao, produto_preco, produto_image }: UpdatePutProdutoDTO) {
-        await this.exists(id)
+    async updatePartial(
+        id: number,
+        { nome_produto, produto_descricao, produto_preco }: UpdatePutProdutoDTO,
+        productImage?: ProductImage // a imagem pode ou não ser passada.
+    ) {
 
-        const data: any = {};
+        if (nome_produto != '' || produto_descricao != '' || produto_preco != '' || productImage != null){
+            await this.exists(id);
 
-        if (nome_produto) {
-            data.nome_produto = nome_produto
-        }
+            const data: any = {};
 
-        if (produto_descricao) {
-            data.produo_descricao = produto_descricao
-        }
+            if (nome_produto) {
+                data.nome_produto = nome_produto;
+            }
 
-        if (produto_preco) {
-            data.produto_preco = produto_preco;
-        }
+            if (produto_descricao) {
+                data.produto_descricao = produto_descricao;
+            }
 
-        if (produto_image) {
-            data.produto_image = produto_image;
-        }
+            if (produto_preco) {
+                data.produto_preco = produto_preco;
+            }
 
-        await this.produtosRepository.update(id, data);
-        return this.readOne(id)
+            if (productImage) {
+                const newImage = await this.supabase.storage
+                    .from('product_image')
+                    .upload(productImage.originalname, productImage.buffer, {
+                        upsert: true,
+                    });
+
+                if (newImage.error) {
+                    throw new Error(newImage.error.message);
+                }
+
+                const { data: publicData } = this.supabase.storage
+                    .from('product_image')
+                    .getPublicUrl(newImage.data.path);
+
+                if (!publicData.publicUrl) {
+                    throw new Error('Não foi possível gerar a URL pública.');
+                }
+
+                data.produto_image = publicData.publicUrl;
+            }
+
+            await this.produtosRepository.update(id, data);
+            return this.readOne(id);
+        }else{
+            throw new NotFoundException("Nenhuma informação alterada.");
+        } 
     }
+
 }
