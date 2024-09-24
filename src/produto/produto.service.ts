@@ -197,4 +197,30 @@ export class ProdutoService {
         } 
     }
 
+    // função para apagar do supabase - deve receber o caminho da imagem
+    async deleteImageFromSupabase(imagePath: string): Promise<void> {
+        const { error } = await this.supabase.storage
+            .from('product_image')
+            .remove([imagePath]);
+
+        if (error) {
+            throw new Error(`Erro ao deletar a imagem: ${ error.message }`);
+        }
+    }
+
+    async delete(id: number): Promise<void> {
+        const produto = await this.readOne(id);
+
+        if (produto.produto_image) {
+            // busca o caminho da imagem
+            const imagePath = produto.produto_image.split('/').pop();
+
+            // apaga do supabase
+            await this.deleteImageFromSupabase(imagePath);
+        }
+
+        // apaga do banco
+        await this.produtosRepository.delete(id);
+    }
+
 }
