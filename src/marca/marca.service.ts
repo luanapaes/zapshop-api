@@ -33,7 +33,8 @@ export class MarcaService {
     async create(data: CreateMarcaDTO, file: LogomarcaDTO) {
         if (!(await this.marcasRepository.exists({
             where: {
-                nome_marca: data.nome_marca
+                nome_marca: data.nome_marca,
+                usuarioId: data.usuarioId
             }
         }))) {
 
