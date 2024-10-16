@@ -18,10 +18,10 @@ export class ProdutoEntity {
     nome_produto: string;
 
     @Column()
-    produto_image: string;
+    produto_imagem: string;
 
     @Column()
-    produto_preco: string;
+    produto_preco: number;
 
     @Column()
     produto_descricao: string;
