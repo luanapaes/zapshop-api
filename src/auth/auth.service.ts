@@ -18,7 +18,7 @@ export class AuthService {
 
         @InjectRepository(UsuarioEntity)
         private usuariosRepository: Repository<UsuarioEntity>
-    ){}
+    ) { }
 
     createToken(user) {
         return {

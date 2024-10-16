@@ -1,4 +1,5 @@
 import { CanActivate, ExecutionContext, Injectable } from "@nestjs/common";
+import { console } from "inspector";
 import { AuthService } from "src/auth/auth.service";
 import { UsuarioService } from "src/usuario/usuario.service";
 
