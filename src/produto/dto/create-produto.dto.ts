@@ -6,10 +6,10 @@ export class CreateProdutoDTO {
     nome_produto: string;
 
     @IsString()
-    produto_image: string;
+    produto_imagem: string;
 
-    @IsString()
-    produto_preco: string;
+    @IsNumber()
+    produto_preco: number;
 
     @IsString()
     produto_descricao: string;
