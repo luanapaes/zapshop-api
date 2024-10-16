@@ -1,5 +1,5 @@
 export type ProductImage = {
-    fieldname: string;
+    // fieldname: string;
     originalname: string;
     mimetype: string;
     buffer: Buffer;
