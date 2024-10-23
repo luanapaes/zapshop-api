@@ -5,7 +5,7 @@ import { AuthGuard } from "src/guards/auth.guard";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { UpdatePutProdutoDTO } from "./dto/update-put-produto.dto";
 
-@UseGuards(AuthGuard)
+
 @Controller('produtos')
 export class ProdutoController {
     constructor(
@@ -17,17 +17,20 @@ export class ProdutoController {
         return this.produtoService.read();
     }
 
+    @UseGuards(AuthGuard)
     @Get(':id')
     async readOne(id: number){
         return this.produtoService.readOne(id);
     }
 
+    @UseGuards(AuthGuard)
     @Post()
     @UseInterceptors(FileInterceptor('produto_imagem'))
     async create(@Body() data: CreateProdutoDTO, @UploadedFile() productImage){
         return this.produtoService.create(data, productImage);
     }
 
+    @UseGuards(AuthGuard)
     @Put(':id')
     @UseInterceptors(FileInterceptor('produto_imagem'))
     async update(@Body() produto: UpdatePutProdutoDTO, @Param("id") id: number, @UploadedFile() productImage) {
@@ -36,6 +39,7 @@ export class ProdutoController {
 
     }
 
+    @UseGuards(AuthGuard)
     @Patch(':id')
     @UseInterceptors(FileInterceptor('produto_imagem'))
     async updatePartial(@Body() produto: UpdatePutProdutoDTO, @Param("id") id: number, @UploadedFile() productImage) {
@@ -44,6 +48,7 @@ export class ProdutoController {
 
     }
 
+    @UseGuards(AuthGuard)
     @Delete(':id')
     async delete(@Param('id') id: number) {
         return this.produtoService.delete(id)
