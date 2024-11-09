@@ -8,6 +8,7 @@ import { MarcaService } from "src/marca/marca.service";
 import { createClient } from "@supabase/supabase-js";
 import { ProductImage } from "./types/product-image.type";
 import { UpdatePutProdutoDTO } from "./dto/update-put-produto.dto";
+import { UpdatePatchProdutoDTO } from "./dto/upadate-patch-produto.dto";
 
 @Injectable()
 export class ProdutoService {
@@ -39,11 +40,25 @@ export class ProdutoService {
                 nome_marca: data.nome_marca
             }
         })) {
-    
 
+            const base64String = data.produto_imagem;
+
+            // extrai e decodifica o conteúdo base64
+            const matches = base64String.match(/^data:([A-Za-z-+/]+);base64,(.+)$/);
+            if (!matches || matches.length !== 3) {
+                throw new Error('Formato inválido de base64');
+            }
+
+            const mimeType = matches[1]; // tipo MIME - ex: image/jpeg
+            const imageData = matches[2]; // conteúdo base64 da imagem
+
+            const buffer = Buffer.from(imageData, 'base64'); // converte para buffer
+
+            // faz upload para o Supabase
             const newLogomarca = await this.supabase.storage
                 .from('product_image')
-                .upload(file.originalname, file.buffer, {
+                .upload(data.nome_produto, buffer, {
+                    contentType: mimeType,
                     upsert: true,
                 });
 
@@ -68,8 +83,8 @@ export class ProdutoService {
                 nome_produto: data.nome_produto,
                 produto_preco: data.produto_preco,
                 produto_descricao: data.produto_descricao,
-                categorias: fullMarca.categorias,
-                produto_image: publicData.publicUrl,
+                categorias: data.categorias,
+                produto_imagem: publicData.publicUrl,
                 marcaId: fullMarca.id
             }
 
@@ -92,7 +107,7 @@ export class ProdutoService {
     }
 
     async read() {
-        return this.marcasRepository.find();
+        return this.produtosRepository.find();
     }
 
     async readOne(id: number) {
@@ -103,9 +118,9 @@ export class ProdutoService {
         })
     }
 
-    async update(id: number, { nome_produto, produto_descricao, produto_preco, produto_image, nome_marca }: UpdatePutProdutoDTO, productImage: ProductImage) {
+    async update(id: number, { nome_produto, produto_descricao, produto_preco, produto_imagem, nome_marca }: UpdatePutProdutoDTO, productImage: ProductImage) {
 
-        if (nome_produto != '' && produto_descricao != '' && produto_preco != '' && produto_image != '' && nome_marca != '' && productImage != null){
+        if (nome_produto != '' && produto_descricao != '' && produto_preco != null && produto_imagem != null && nome_marca != ''){
             await this.exists(id)
 
             const fullMarca = await this.marcasService.findIdByNome(nome_marca)
@@ -135,7 +150,7 @@ export class ProdutoService {
                 nome_produto: nome_produto,
                 produto_descricao: produto_descricao,
                 produto_preco: produto_preco,
-                produto_image: publicData.publicUrl,
+                produto_imagem: publicData.publicUrl,
                 marcaId: fullMarca.id
             });
 
@@ -146,49 +161,76 @@ export class ProdutoService {
     }
 
     async updatePartial(
-        id: number,
-        { nome_produto, produto_descricao, produto_preco }: UpdatePutProdutoDTO,
-        productImage?: ProductImage // a imagem pode ou não ser passada.
+        id: number, produto: UpdatePatchProdutoDTO
     ) {
 
-        if (nome_produto != '' || produto_descricao != '' || produto_preco != '' || productImage != null){
+        if (produto.nome_produto != '' || produto.produto_descricao != '' || produto.produto_preco != null || produto.produto_imagem != '' || produto.nome_marca){
             await this.exists(id);
+
+
+            const fullMarca = await this.marcasService.findIdByNome(produto.nome_marca)
 
             const data: any = {};
 
-            if (nome_produto) {
-                data.nome_produto = nome_produto;
+            if (produto.nome_produto) {
+                data.nome_produto = produto.nome_produto;
             }
 
-            if (produto_descricao) {
-                data.produto_descricao = produto_descricao;
+            if (produto.produto_descricao) {
+                data.produto_descricao = produto.produto_descricao;
             }
 
-            if (produto_preco) {
-                data.produto_preco = produto_preco;
+            if (produto.produto_preco != undefined) {
+                data.produto_preco = produto.produto_preco;
             }
 
-            if (productImage) {
-                const newImage = await this.supabase.storage
+            if (produto.produto_imagem) {
+                const base64String = produto.produto_imagem;
+
+                // extrai e decodifica o conteúdo base64
+                const matches = base64String.match(/^data:([A-Za-z-+/]+);base64,(.+)$/);
+                if (!matches || matches.length !== 3) {
+                    throw new Error('Formato inválido de base64');
+                }
+
+                const mimeType = matches[1]; // tipo MIME - ex: image/jpeg
+                const imageData = matches[2]; // conteúdo base64 da imagem
+
+                const buffer = Buffer.from(imageData, 'base64'); // converte para buffer
+
+                // faz upload para o Supabase
+                const updateImage = await this.supabase.storage
                     .from('product_image')
-                    .upload(productImage.originalname, productImage.buffer, {
+                    .upload(produto.nome_produto, buffer, {
+                        contentType: mimeType,
                         upsert: true,
                     });
 
-                if (newImage.error) {
-                    throw new Error(newImage.error.message);
+                if (updateImage.error) {
+                    throw new Error(updateImage.error.message);
                 }
 
+                // faz uma url para a logomarca
                 const { data: publicData } = this.supabase.storage
                     .from('product_image')
-                    .getPublicUrl(newImage.data.path);
+                    .getPublicUrl(updateImage.data.path);
+
+                if (!data) {
+                    throw new Error('Erro ao gerar URL pública: ');
+                }
 
                 if (!publicData.publicUrl) {
                     throw new Error('Não foi possível gerar a URL pública.');
                 }
 
-                data.produto_image = publicData.publicUrl;
+                data.produto_imagem = publicData.publicUrl;
             }
+
+            if(fullMarca.nome_marca){
+                data.marcaId = fullMarca.id
+            }
+
+            console.log(data)
 
             await this.produtosRepository.update(id, data);
             return this.readOne(id);
@@ -211,16 +253,17 @@ export class ProdutoService {
     async delete(id: number): Promise<void> {
         const produto = await this.readOne(id);
 
-        if (produto.produto_image) {
+        if (produto.produto_imagem) {
             // busca o caminho da imagem
-            const imagePath = produto.produto_image.split('/').pop();
-
+            const imagePath = produto.produto_imagem.split('/').pop();            
             // apaga do supabase
             await this.deleteImageFromSupabase(imagePath);
+            // apaga do banco
+            await this.produtosRepository.delete(id);
         }
-
-        // apaga do banco
-        await this.produtosRepository.delete(id);
+        else{
+            console.log("erro")
+        }
     }
 
 }
