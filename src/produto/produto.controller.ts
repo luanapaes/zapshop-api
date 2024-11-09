@@ -44,7 +44,7 @@ export class ProdutoController {
     @UseInterceptors(FileInterceptor('produto_imagem'))
     async updatePartial(@Body() produto: UpdatePutProdutoDTO, @Param("id") id: number, @UploadedFile() productImage) {
 
-        return this.produtoService.updatePartial(id, produto, productImage);
+        return this.produtoService.updatePartial(id, produto);
 
     }
 
