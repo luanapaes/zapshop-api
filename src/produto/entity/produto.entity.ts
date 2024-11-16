@@ -20,7 +20,11 @@ export class ProdutoEntity {
     @Column()
     produto_imagem: string;
 
-    @Column()
+    @Column({
+        type: 'decimal',
+        precision: 10,
+        scale: 2,
+    })
     produto_preco: number;
 
     @Column()
