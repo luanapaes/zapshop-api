@@ -33,7 +33,7 @@ export class ProdutoEntity {
     @Column()
     categorias: string;
 
-    @ManyToOne(() => MarcaEntity, (marca) => marca.produtos)
+    @ManyToOne(() => MarcaEntity, (marca) => marca.produtos, { onDelete: 'CASCADE' })
     @JoinColumn({
         name: 'marca_id',
         referencedColumnName: 'id'
