@@ -7,6 +7,7 @@ import { LogomarcaDTO } from "./dto/logomarca.dto";
 import { createClient } from "@supabase/supabase-js";
 import { UpdatePutMarcaDTO } from "./dto/update-put-marca.dto";
 import { UpdatePatchMarcaDTO } from "./dto/update-patch-marca.dto";
+import { ProductImage } from "src/produto/types/product-image.type";
 
 Injectable()
 export class MarcaService {
@@ -17,6 +18,12 @@ export class MarcaService {
 
     supabaseURL = process.env.SUPABASE_URL;
     supabaseKEY = process.env.SUPABASE_KEY;
+
+    supabase = createClient(this.supabaseURL, this.supabaseKEY, {
+        auth: {
+            persistSession: false
+        }
+    });
 
     async exists(id: number) {
 
@@ -31,6 +38,7 @@ export class MarcaService {
 
 
     async create(data: CreateMarcaDTO, file: LogomarcaDTO) {
+        // verifica se a marca já existe no banco de dados
         if (!(await this.marcasRepository.exists({
             where: {
                 nome_marca: data.nome_marca,
@@ -38,36 +46,42 @@ export class MarcaService {
             }
         }))) {
 
-            const supabase = createClient(this.supabaseURL, this.supabaseKEY, {
-                auth: {
-                    persistSession: false
-                }
-            });
+            const base64String = data.logomarca;
 
-            // faz o upload
-            const newLogomarca = await supabase.storage
-                .from('logomarca')
-                .upload(file.originalname, file.buffer, {
+            // extrai e decodifica o conteúdo base64
+            const matches = base64String.match(/^data:([A-Za-z-+/]+);base64,(.+)$/);
+            if (!matches || matches.length !== 3) {
+                throw new Error('Formato inválido de base64');
+            }
+
+            const mimeType = matches[1]; // tipo MIME - ex: image/jpeg
+            const imageData = matches[2]; // conteúdo base64 da imagem
+
+            const buffer = Buffer.from(imageData, 'base64'); // converte para buffer
+
+            // faz o upload da imagem para o bucket 'logomarca'
+            const newLogomarca = await this.supabase.storage
+                .from('logomarca')  // Certifique-se de que o nome do bucket está correto aqui
+                .upload(data.nome_marca, buffer, {
+                    contentType: mimeType,
                     upsert: true,
                 });
-    
+
+            // verifica se houve algum erro durante o upload
             if (newLogomarca.error) {
                 throw new Error(newLogomarca.error.message);
             }
 
-            // faz uma url para a logomarca
-            const { data: publicData } = supabase.storage
-                .from('zapshop')
+            // gera a URL pública da imagem usando o bucket'logomarca'
+            const { data: publicData } = this.supabase.storage
+                .from('logomarca') 
                 .getPublicUrl(newLogomarca.data.path);
 
-            if (!data) {
-                throw new Error('Erro ao gerar URL pública: ');
-            }
-
-            if (!publicData.publicUrl) {
+            if (!publicData?.publicUrl) {
                 throw new Error('Não foi possível gerar a URL pública.');
             }
-            
+
+            // cria o objeto da marca
             const newMarca: CreateMarcaDTO = {
                 usuarioId: data.usuarioId,
                 nome_marca: data.nome_marca,
@@ -75,6 +89,7 @@ export class MarcaService {
                 logomarca: publicData.publicUrl,
             }
 
+            // salva a nova marca no banco de dados
             const marca = this.marcasRepository.create(newMarca);
 
             return await this.marcasRepository.save(marca);
@@ -108,58 +123,140 @@ export class MarcaService {
 
     }
 
-    async update(id: number, { usuarioId, nome_marca, categorias, logomarca }: UpdatePutMarcaDTO) {
+    async findByNome(nome: string) {
+        const marca = await this.marcasRepository
+            .createQueryBuilder('marca')
+            .where('marca.nome_marca = :nome', { nome })
+            .getOne();
 
-        await this.exists(id)
-
-        await this.marcasRepository.update(id, {
-            usuarioId: usuarioId,
-            nome_marca: nome_marca, 
-            categorias: categorias, 
-            logomarca: logomarca
-        });
-
-        return this.findMarcaById(id);
+        if (marca) {
+            return this.marcasRepository.findOne({
+                where: {
+                    nome_marca: nome
+                },
+                relations: ['produtos']
+            })
+            // return marca;
+        } else {
+            return this.read()
+        }
     }
 
-    async updatePartial(id: number, { usuarioId, nome_marca, categorias, logomarca }: UpdatePatchMarcaDTO) {
 
-        await this.exists(id)
+    async update(id: number, { nome_marca, categorias, logomarca }: UpdatePutMarcaDTO, marcaImage: ProductImage) {
 
-        const data: any = {};
+        if (nome_marca != '' && categorias != '' && logomarca != '') {
+            await this.exists(id)
 
-        if(usuarioId){
-            data.usuarioId = usuarioId
+
+            const newLogomarca = await this.supabase.storage
+                .from('logomarca')
+                .upload(marcaImage.originalname, marcaImage.buffer, {
+                    upsert: true,
+                });
+
+            if (newLogomarca.error) {
+                console.error("Erro no upload da imagem:", newLogomarca.error);
+                throw new Error(newLogomarca.error.message);
+            }
+
+            // faz uma url para a logomarca
+            const { data: publicData } = this.supabase.storage
+                .from('logomarca')
+                .getPublicUrl(newLogomarca.data.path);
+
+            if (!publicData || !publicData.publicUrl) {
+                throw new Error('Não foi possível gerar a URL pública.');
+            }
+
+
+            await this.marcasRepository.update(id, {
+                nome_marca: nome_marca,
+                categorias: categorias,
+                logomarca: publicData.publicUrl,
+            });
+
+            return this.findMarcaById(id);
+        } {
+            throw new NotFoundException("É necessário preencher todos os campos.");
         }
+    }
 
-        if (nome_marca) {
-            data.name_marca = nome_marca
-        }
+    async updatePartial(id: number, marca: UpdatePatchMarcaDTO) {
+        
+        if (marca.nome_marca != undefined || marca.categorias != undefined || marca.logomarca != undefined){
+            await this.exists(id)
 
-        if (categorias) {
-            data.categorias = categorias;
-        }
+            const data: any = {};
 
-        if (logomarca) {
-            data.logomarca = logomarca; 
-        }
+            if (marca.usuarioId) {
+                data.usuarioId = marca.usuarioId
+            }
 
-        await this.marcasRepository.update(id, data);
-        return this.findMarcaById(id)
+            if (marca.nome_marca) {
+
+                data.nome_marca = marca.nome_marca
+            }
+
+            if (marca.categorias) {
+                data.categorias = marca.categorias;
+            }
+
+            if (marca.logomarca) {
+                const base64String = marca.logomarca;
+
+                const matches = base64String.match(/^data:([A-Za-z-+/]+);base64,(.+)$/);
+                if (!matches || matches.length !== 3) {
+                    throw new Error('Formato inválido de base64');
+                }
+
+                const mimeType = matches[1]; 
+                const imageData = matches[2];
+
+                const buffer = Buffer.from(imageData, 'base64');
+
+                const newLogomarca = await this.supabase.storage
+                    .from('logomarca')
+                    .upload(marca.nome_marca, buffer, {
+                        contentType: mimeType,
+                        upsert: true,
+                    });
+
+                if (newLogomarca.error) {
+                    throw new Error(newLogomarca.error.message);
+                }
+
+                const { data: publicData } = this.supabase.storage
+                    .from('logomarca')
+                    .getPublicUrl(newLogomarca.data.path);
+
+                if (!publicData?.publicUrl) {
+                    throw new Error('Não foi possível gerar a URL pública.');
+                }
+                data.logomarca = marca.logomarca;
+            }
+
+
+            await this.marcasRepository.update(id, data);
+            return this.findMarcaById(id)
+        } else {
+            throw new NotFoundException("Nenhuma informação alterada.");
+        } 
+        
     }
 
     async delete(id: number) {
 
         await this.exists(id);
 
-        //verifica se o todo existe
-        const todo = await this.marcasRepository.findOne({
+        //verifica se a marca existe
+        const marca = await this.marcasRepository.findOne({
             where: {
                 id
             }
         });
 
-        return await this.marcasRepository.remove(todo)
+        return await this.marcasRepository.remove(marca)
 
     }
 
