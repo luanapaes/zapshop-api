@@ -46,9 +46,8 @@ export class MarcaController {
     @Put(':id')
     @UseInterceptors(FileInterceptor('logomarca'))
     async update(@Body() marca: UpdatePutMarcaDTO, @UploadedFile() logomarca, @Param("id") id: number, @Req() req) {
-        console.log(marca.nome_marca)
+        
         marca.usuarioId = req.user.id;
-        marca.logomarca = logomarca
         return this.marcasService.update(id, marca, logomarca);
 
     }
@@ -56,9 +55,15 @@ export class MarcaController {
     @UseGuards(AuthGuard)
     @Patch(':id')
     async updatePartial(@Body() marca: UpdatePatchMarcaDTO, @Param("id") id: number, @Req() req) {
-        
-        marca.usuarioId = req.user.id;
-        return this.marcasService.updatePartial(id, marca);
+
+        const newMarca: UpdatePatchMarcaDTO = {
+            nome_marca: marca.nome_marca,
+            categorias: marca.categorias,
+            logomarca: marca.logomarca,
+            usuarioId: req.user.id
+        }
+
+        return this.marcasService.updatePartial(id, newMarca);
         
     }
 
