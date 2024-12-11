@@ -19,7 +19,7 @@ export class ProdutoController {
 
     @UseGuards(AuthGuard)
     @Get(':id')
-    async readOne(id: number){
+    async readOne(@Param('id') id: number){
         return this.produtoService.readOne(id);
     }
 
