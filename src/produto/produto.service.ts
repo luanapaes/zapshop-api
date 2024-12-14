@@ -184,7 +184,7 @@ export class ProdutoService {
                 data.produto_preco = produto.produto_preco;
             }
 
-            if (produto.produto_imagem) {
+            if (produto.produto_imagem.match(/^data:([A-Za-z-+/]+);base64,(.+)$/)) {
                 const base64String = produto.produto_imagem;
 
                 // extrai e decodifica o conteúdo base64
