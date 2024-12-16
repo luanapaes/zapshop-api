@@ -8,6 +8,7 @@ import { createClient } from "@supabase/supabase-js";
 import { UpdatePutMarcaDTO } from "./dto/update-put-marca.dto";
 import { UpdatePatchMarcaDTO } from "./dto/update-patch-marca.dto";
 import { ProductImage } from "src/produto/types/product-image.type";
+import { v4 as uuidv4 } from 'uuid';
 
 Injectable()
 export class MarcaService {
@@ -214,13 +215,16 @@ export class MarcaService {
                 const imageData = matches[2];
 
                 const buffer = Buffer.from(imageData, 'base64');
+                const fileName = marca.nome_marca ? `${marca.nome_marca.replace(/\s+/g, '_')}_${Date.now()}`
+                : `logomarca_${uuidv4()}`
 
                 const newLogomarca = await this.supabase.storage
                     .from('logomarca')
-                    .upload(marca.nome_marca, buffer, {
+                    .upload(fileName, buffer, {
                         contentType: mimeType,
                         upsert: true,
                     });
+                    console.log("chegou aqui")
 
                 if (newLogomarca.error) {
                     throw new Error(newLogomarca.error.message);
@@ -230,12 +234,14 @@ export class MarcaService {
                     .from('logomarca')
                     .getPublicUrl(newLogomarca.data.path);
 
+                    console.log(publicData.publicUrl)
+
                 if (!publicData?.publicUrl) {
                     throw new Error('Não foi possível gerar a URL pública.');
                 }
-                data.logomarca = marca.logomarca;
+                
+                data.logomarca = publicData.publicUrl;
             }
-
 
             await this.marcasRepository.update(id, data);
             return this.findMarcaById(id)
