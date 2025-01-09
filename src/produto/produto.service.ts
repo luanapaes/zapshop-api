@@ -171,7 +171,8 @@ export class ProdutoService {
             produto.produto_descricao !== undefined ||
             produto.produto_preco !== undefined ||
             produto.produto_imagem !== undefined ||
-            produto.nome_marca !== undefined
+            produto.nome_marca !== undefined ||
+            produto.categorias !== undefined
         ) {
             // Verifica se o produto existe
             await this.exists(id);
@@ -184,6 +185,10 @@ export class ProdutoService {
                 data.nome_produto = produto.nome_produto;
             }
 
+            if (produto.categorias) {
+                data.categorias = produto.categorias;
+            }
+
             if (produto.produto_descricao) {
                 data.produto_descricao = produto.produto_descricao;
             }
@@ -193,46 +198,40 @@ export class ProdutoService {
             }
 
             if (produto.produto_imagem) {
+                const base64String = produto.produto_imagem;
 
-                // verifica se a imagem está em formato base64 válido
-                if (produto.produto_imagem.match(/^data:([A-Za-z-+/]+);base64,(.+)$/)) {
-                    const base64String = produto.produto_imagem;
-                    const matches = base64String.match(/^data:([A-Za-z-+/]+);base64,(.+)$/);
-
-                    if (!matches || matches.length !== 3) {
-                        throw new Error('Formato inválido de base64');
-                    }
-
-                    const mimeType = matches[1]; // Tipo MIME (ex: image/jpeg)
-                    const imageData = matches[2]; // Dados base64 da imagem
-                    const buffer = Buffer.from(imageData, 'base64');
-
-                    // gera um nome único para o arquivo
-                    const fileName = produto.nome_produto
-                        ? `${produto.nome_produto.replace(/\s+/g, '_')}_${Date.now()}`
-                        : `image_${uuidv4()}`;
-
-                    // faz upload para o Supabase
-                    const updateImage = await this.supabase.storage
-                        .from('product_image')
-                        .upload(fileName, buffer, {
-                            contentType: mimeType,
-                            upsert: true,
-                        });
-
-                    if (updateImage.error) {
-                        throw new Error(updateImage.error.message);
-                    }
-
-                    // gera uma URL pública para a imagem no Supabase
-                    const { data: publicData } = this.supabase.storage
-                        .from('product_image')
-                        .getPublicUrl(updateImage.data.path);
-
-                    data.produto_imagem = publicData.publicUrl;
-                } else {
-                    throw new Error('A imagem enviada não está em formato base64 válido.');
+                const matches = base64String.match(/^data:([A-Za-z-+/]+);base64,(.+)$/);
+                if (!matches || matches.length !== 3) {
+                    throw new Error('Formato inválido de base64');
                 }
+
+                const mimeType = matches[1];
+                const imageData = matches[2];
+
+                const buffer = Buffer.from(imageData, 'base64');
+                const fileName = produto.nome_produto ? `${produto.nome_produto.replace(/\s+/g, '_')}_${Date.now()}`
+                    : `produto_imagem_${uuidv4()}`
+
+                const newLogomarca = await this.supabase.storage
+                    .from('product_image')
+                    .upload(fileName, buffer, {
+                        contentType: mimeType,
+                        upsert: true,
+                    });
+
+                if (newLogomarca.error) {
+                    throw new Error(newLogomarca.error.message);
+                }
+
+                const { data: publicData } = this.supabase.storage
+                    .from('product_image')
+                    .getPublicUrl(newLogomarca.data.path);
+
+                if (!publicData?.publicUrl) {
+                    throw new Error('Não foi possível gerar a URL pública.');
+                }
+
+                data.produto_imagem = publicData.publicUrl;
             }
 
             // Atualiza o ID da marca, se fornecido
