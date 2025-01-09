@@ -69,7 +69,7 @@ export class MarcaController {
 
     @UseGuards(AuthGuard)
     @Delete(':id')
-    async delete(id: number){
+    async delete(@Param('id') id: number){
         return this.marcasService.delete(id)
     }
 }
