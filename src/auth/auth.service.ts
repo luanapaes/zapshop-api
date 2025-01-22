@@ -80,13 +80,16 @@ export class AuthService {
     async forget(email: string) {
         const user = await this.usuariosRepository.findOneBy({
             email
-        })
+        });
 
         if (!user) {
-            throw new UnauthorizedException("E-mail incorreto.")
+            return {
+                status: 404,
+                message: "E-mail incorreto."
+            };
         }
 
-        this.jwtService.sign({
+        const token = this.jwtService.sign({
             id: user.id
         }, {
             secret: process.env.JWT_SECRET,
@@ -94,9 +97,13 @@ export class AuthService {
             subject: String(user.id),
             issuer: 'forget',
             audience: 'users'
-        })
+        });
 
-        return true;
+        return {
+            status: 200,
+            message: "Token gerado com sucesso.",
+            token: token
+        };
     }
 
     async reset(password: string, token: string) {
